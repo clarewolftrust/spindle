@@ -41,6 +41,10 @@ $register = function () {
 ?>
 
 <div class="p-5 max-w-md m-auto">
+    <p class="mb-4">
+        Creating a free account allows you to save all your scores, so you can
+        view your past results and compare them against everyone else who played that day.
+    </p>
     <form wire:submit="register">
         <!-- Name -->
         <div>
@@ -82,6 +86,10 @@ $register = function () {
         <div class="flex items-center justify-end mt-4">
             <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('login') }}" wire:navigate>
                 {{ __('Already registered?') }}
+            </a>
+
+            <a class="underline text-sm ms-3 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="/" wire:navigate>
+                Not interested?
             </a>
 
             <x-primary-button class="ms-4">
