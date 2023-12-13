@@ -214,7 +214,7 @@
                 User timestamp: {{ $userTimestamp }}
             </p>
             */ ?>
-            <p @click="makeConfetti">{{ $currentDate }}</p>
+            <p>{{ $currentDate }}</p>
             <p>
                 Target word: <b>{{ $targetWord }}</b> 
                 <button type="button" @click="requestHelp" class="bg-gray-400 dark:bg-gray-700 rounded-full w-6">❔</button>
