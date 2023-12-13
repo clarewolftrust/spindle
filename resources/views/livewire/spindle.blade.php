@@ -266,11 +266,11 @@
                                 ></div>@endforeach
                         </div>
                         <div class="flex justify-between items-end">
-                            <div>0</div>
+                            <div>1</div>
                             <div>{{$leaderboard[count($leaderboard) - 1]->turnCount}}</div>
                         </div>
                         <div class="flex justify-between items-end">
-                            <div class="text-sm">turns</div>
+                            <div class="text-sm">turn</div>
                             <div class="text-sm">turns</div>
                         </div>
                     </div>
