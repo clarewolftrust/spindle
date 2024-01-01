@@ -1,11 +1,14 @@
 <div
-  x-data="{ 
-    start: null, 
+  x-data="{
+    start: null,
     end: null,
     invalidWordStart: null,
     invalidWordEnd: null,
     validWordStart: null,
     validWordEnd: null,
+    invalidWordText: null,
+    showInvalidWordText: false,
+    showInvalidWordTextTimout: null,
     loading: false,
     spinning: false,
     showHelp: false,
@@ -16,12 +19,12 @@
         }
         if (this.invalidWordStart[0] === this.invalidWordEnd[0]) {
             // horizontal word
-            return row === this.invalidWordStart[0] && 
-              col >= this.invalidWordStart[1] && 
+            return row === this.invalidWordStart[0] &&
+              col >= this.invalidWordStart[1] &&
               col <= this.invalidWordEnd[1];
         }
-        return col === this.invalidWordStart[1] && 
-          row >= this.invalidWordStart[0] && 
+        return col === this.invalidWordStart[1] &&
+          row >= this.invalidWordStart[0] &&
           row <= this.invalidWordEnd[0];
     },
 
@@ -32,7 +35,7 @@
         if (this.validWordStart[0] === this.validWordEnd[0]) {
             // horizontal word
             if (row !== this.validWordStart[0] ||
-              col < this.validWordStart[1] || 
+              col < this.validWordStart[1] ||
               col > this.validWordEnd[1]) {
                 return '';
             }
@@ -44,7 +47,7 @@
         }
         // vertical word
         if (col !== this.validWordStart[1] ||
-          row < this.validWordStart[0] || 
+          row < this.validWordStart[0] ||
           row > this.validWordEnd[0]) {
             return '';
         }
@@ -106,6 +109,10 @@
                 this.loading = true;
                 this.lastResult = await $wire.submit(this.start, this.end);
                 this.loading = false;
+                if (this.showInvalidWordTextTimout) {
+                    clearTimeout(this.showInvalidWordTextTimout);
+                    this.showInvalidWordTextTimout = null;
+                }
                 console.log('result', this.lastResult);
 
                 if (this.lastResult.valid) {
@@ -114,6 +121,7 @@
                     this.validWordStart = (this.start[0] < this.end[0] || this.start[1] < this.end[1]) ? this.start : this.end;
                     this.validWordEnd = this.validWordStart === this.start ? this.end : this.start;
                     this.spinning = true;
+                    this.showInvalidWordText = false;
                     if ($wire.victory) {
                         this.makeConfetti();
                     }
@@ -125,12 +133,17 @@
                     }, 1000);
                 } else {
                     // it was invalid - flash the letters red
+                    this.invalidWordText = this.lastResult.word;
+                    this.showInvalidWordText = true;
                     this.invalidWordStart = (this.start[0] < this.end[0] || this.start[1] < this.end[1]) ? this.start : this.end;
                     this.invalidWordEnd = this.invalidWordStart === this.start ? this.end : this.start;
                     setTimeout(() => {
                         this.invalidWordStart = null;
                         this.invalidWordEnd = null;
                     }, 500);
+                    this.showInvalidWordTextTimout = setTimeout(() => {
+                        this.showInvalidWordText = false;
+                    }, 5000);
                     this.clearStartEnd();
                 }
             }
@@ -162,11 +175,23 @@
     requestHelp() {
         this.showHelp = true;
     },
+
+    helpAnimationPhases: ['blank', 'pause', 'tapStart', 'tapEnd', 'rotating', 'resting', 'flashing', 'disappearing'],
+    helpAnimationIndex: 0,
+    reachedPhase(p) {
+        return this.helpAnimationPhases.indexOf(p) <= this.helpAnimationIndex;
+    },
+    cycleHelpAnimation() {
+        this.helpAnimationIndex++;
+        if (this.helpAnimationIndex >= this.helpAnimationPhases.length) {
+            this.helpAnimationIndex = 0;
+        }
+    },
   }"
-  @click.away="clearStartEnd" 
-  x-init="$wire.initialise(new Date().getTimezoneOffset())"
+  @click.away="clearStartEnd"
+  x-init="$wire.initialise(new Date().getTimezoneOffset()); setInterval(() => cycleHelpAnimation(), 1000)"
   class="inline-block dark:text-white max-w-xl"
-> 
+>
     <div x-transition x-cloak x-show="showHelp" class="flex flex-col items-center justify-center
      bg-sky-200/75 dark:bg-sky-700/75 h-[75vh] p-4 rounded-md absolute left-[2rem] top-[9rem] z-50
      md:text-lg
@@ -184,16 +209,23 @@
             or vertically.
         </p>
         <p class="mb-3">
-            For example, you could spin
-            <span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">C</span><span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">A</span><span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">T</span>
-            to obtain  
-            <span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">T</span><span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">A</span><span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">C</span>.
+            To spin a word, tap the first letter, then tap the last letter. If the word is
+            a valid English word, it will flip.
         </p>
         <p class="mb-3">
-            You can also spin in reverse, so you could spin 
-            <span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">T</span><span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">A</span><span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">H</span><span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">C</span>
-            to make 
-            <span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">C</span><span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">H</span><span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">A</span><span class="font-mono w-4 h-4 px-1 bg-sky-400 dark:bg-sky-600 mr-1">T</span>.
+            In the example below, you could tap E then T to spin the word EAT:
+        </p>
+        <p class="mb-3 transition-opacity delay-700" x-bind:class="reachedPhase('disappearing') ? 'opacity-0' : 'opacity-100' ">
+            <span class="inline-block font-mono transition-all text-2xl w-12 h-12 py-2 px-2 mr-2 bg-sky-400 dark:bg-sky-600">G</span>
+            <span class="inline-block font-mono transition-all text-2xl w-12 h-12 py-2 px-2 mr-2 bg-sky-400 dark:bg-sky-600">R</span>
+            <span class="inline-block font-mono transition-all text-2xl w-12 h-12 py-2 px-2 mr-2" x-bind:class="(reachedPhase('tapEnd') && !reachedPhase('flashing') ? 'bg-green-500 dark:bg-green-600' : 'bg-sky-400 dark:bg-sky-600') + ' ' + (reachedPhase('rotating') ? 'z-20 animate-rotate-x--1' : '')"
+              ><span class="inline-block" x-bind:class="(reachedPhase('rotating') ? 'animate-rotate-text-counter' : '')" x-text="reachedPhase('rotating') ? 'E' : 'T'"></span></span>
+            <span class="inline-block font-mono transition-all text-2xl w-12 h-12 py-2 px-2 mr-2 bg-sky-400 dark:bg-sky-600"  x-bind:class="(reachedPhase('rotating') ? 'z-20 animate-rotate-x-0' : '')">
+            <span class="inline-block" x-bind:class="(reachedPhase('rotating') ? 'animate-rotate-text-counter' : '')">A</span>
+            </span>
+            <span class="inline-block font-mono transition-all text-2xl w-12 h-12 py-2 px-2 mr-2" x-bind:class="(reachedPhase('tapStart') && !reachedPhase('flashing') ? 'bg-green-500 dark:bg-green-600' : 'bg-sky-400 dark:bg-sky-600') + ' ' + (reachedPhase('rotating') ? 'z-20 animate-rotate-x-1' : '')">
+            <span class="inline-block" x-bind:class="(reachedPhase('rotating') ? 'animate-rotate-text-counter' : '')" x-text="reachedPhase('rotating') ? 'T' : 'E'"></span>
+            </span>
         </p>
         <p class="mb-3">
             Try to assemble the target word using the fewest spins possible.
@@ -206,7 +238,7 @@
         <div class="mt-3" x-bind:class="showHelp ? 'blur-md overflow-hidden' : ''"
         x-init="() => {showHelp = (@auth false @else {{$turnCount}} === 0 @endauth)}">
             <?php /*
-            
+
             <p>
                 Game ID: {{ $gameId }}
             </p>
@@ -216,7 +248,7 @@
             */ ?>
             <p>{{ $currentDate }}</p>
             <p>
-                Target word: <b>{{ $targetWord }}</b> 
+                Target word: <b>{{ $targetWord }}</b>
                 <button type="button" @click="requestHelp" class="bg-gray-400 dark:bg-gray-700 rounded-full w-6">❔</button>
             </p>
             <p class="mb-3">
@@ -233,25 +265,27 @@
             </p>
             @foreach ($grid as $rowIndex=>$rowOfLetters)
                 <div wire:key="{{ $rowIndex }}" class="block">
-                    @foreach ($rowOfLetters as $colIndex=>$letter)<button 
-                        wire:key="{{ $rowIndex }}, {{ $colIndex }}" 
+                    @foreach ($rowOfLetters as $colIndex=>$letter)<button
+                        wire:key="{{ $rowIndex }}, {{ $colIndex }}"
                         @click="clickOnLetter({{ $rowIndex }}, {{ $colIndex }})"
                         class="inline-block text-2xl w-12 h-12 mb-3 mr-3 text-center transition-colors "
                         x-bind:class="
                             `${validWordAnimation({{$rowIndex}}, {{$colIndex}})} ` +
-                            letterBackground({{$rowIndex}}, {{$colIndex}}) + 
+                            letterBackground({{$rowIndex}}, {{$colIndex}}) +
                             ($wire.victory ? ' cursor-default ' : '')
                         "
                         ><span class="inline-block" x-bind:class="validWordAnimationText({{$rowIndex}}, {{$colIndex}})">
                         {{ $letter }}</span></button>@endforeach
                 </div>
             @endforeach
+            <p class="bg-red-500 text-white px-4 py-2 inline-block m-auto rounded-md" x-show="showInvalidWordText" x-transition x-transition:enter.duration.200ms
+            x-transition:leave.duration.800ms x-cloak x-text="`${invalidWordText} is not an English word`" />
             @if ($victory)
                 <div wire:transition>
                     <h1 class="font-bold text-4xl m-4">🎉 Victory!</h1>
                     <p class="mb-2">
-                        How did you compare to the rest of the world? The graph shows the 
-                        number of people on the Y axis, and the number of turns they took 
+                        How did you compare to the rest of the world? The graph shows the
+                        number of people on the Y axis, and the number of turns they took
                         on the X axis. Your result is highlighted.
                     </p>
                     <p class="mb-2">

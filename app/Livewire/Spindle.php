@@ -13,7 +13,7 @@ class Spindle extends Component
 {
 
     // stacked probabilities of each letter, starting with A
-    private $probabilities = [ 
+    private $probabilities = [
         8.4966, // A
         10.5686, // B
         15.1074, // C
@@ -116,8 +116,8 @@ class Spindle extends Component
 
     private function getLeaderboard() {
         $rawLeaderboard = DB::select('select turnCount, count(*) as userCount
-        from games 
-        where 
+        from games
+        where
           victory is true
           and userTimestamp = :userTimestamp
         group by turnCount
@@ -125,7 +125,7 @@ class Spindle extends Component
 
         $maxTurnCount = $rawLeaderboard[count($rawLeaderboard) - 1]->turnCount;
         $maxUserCount = 0;
-        for ($i=0; $i < count($rawLeaderboard); $i++) { 
+        for ($i=0; $i < count($rawLeaderboard); $i++) {
             if ($rawLeaderboard[$i]->userCount > $maxUserCount) {
                 $maxUserCount = $rawLeaderboard[$i]->userCount;
             }
@@ -133,7 +133,7 @@ class Spindle extends Component
 
         $this->leaderboard = [];
         $arrayPos = 0;
-        for ($i=1; $i <= $maxTurnCount ; $i++) { 
+        for ($i=1; $i <= $maxTurnCount ; $i++) {
             if ($rawLeaderboard[$arrayPos]->turnCount === $i) {
                 array_push($this->leaderboard, (object) [
                     'turnCount' => $i,
@@ -176,8 +176,8 @@ class Spindle extends Component
                 $this->getLeaderboard();
             }
             return;
-        } 
-        
+        }
+
         srand($userTimestamp);
         $this->generateGrid();
         $this->targetWord = "";
@@ -199,7 +199,7 @@ class Spindle extends Component
                 ) {
                     $this->targetWord = strtoupper($candidate);
                     break;
-                }    
+                }
             }
         }
         if (strlen($this->targetWord) == 0) {
@@ -264,7 +264,7 @@ class Spindle extends Component
 
     public function submit($start, $end) {
         include 'WordList.php';
-        
+
         $word = $this->getWord($start, $end);
 
         if (in_array($word, $allWords) === true) {
@@ -278,7 +278,6 @@ class Spindle extends Component
             // TODO: store the histogram of 5-letter, 4-letter, 3-letter, and 2-letter words, at least for local display
             return (object) [
                 'valid' => true,
-                'propertyTwo' => 42,
             ];
         } else {
             return (object) [
@@ -288,7 +287,7 @@ class Spindle extends Component
             ];
         }
     }
-    
+
 
     public function render()
     {
