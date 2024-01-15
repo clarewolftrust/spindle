@@ -193,10 +193,10 @@
   class="inline-block dark:text-white max-w-xl"
 >
     <div x-transition x-cloak x-show="showHelp" class="flex flex-col items-center justify-center
-     bg-sky-200/75 dark:bg-sky-700/75 h-[75vh] p-4 rounded-md absolute left-[2rem] top-[9rem] z-50
+     bg-sky-200/75 dark:bg-sky-700/75 min-h-[75vh] p-3 rounded-md absolute left-[1rem] top-[9rem] z-50
      md:text-lg
      "
-     style="width: calc(100vw - 4rem);"
+     style="width: calc(100vw - 2rem);"
      @click.outside="dismissHelp"
      >
         <h1 class="text-3xl font-bold">How to play</h1>
@@ -223,7 +223,7 @@
             <span class="inline-block font-mono transition-all text-2xl w-12 h-12 py-2 px-2 mr-2 bg-sky-400 dark:bg-sky-600"  x-bind:class="(reachedPhase('rotating') ? 'z-20 animate-rotate-x-0' : '')">
             <span class="inline-block" x-bind:class="(reachedPhase('rotating') ? 'animate-rotate-text-counter' : '')">A</span>
             </span>
-            <span class="inline-block font-mono transition-all text-2xl w-12 h-12 py-2 px-2 mr-2" x-bind:class="(reachedPhase('tapStart') && !reachedPhase('flashing') ? 'bg-green-500 dark:bg-green-600' : 'bg-sky-400 dark:bg-sky-600') + ' ' + (reachedPhase('rotating') ? 'z-20 animate-rotate-x-1' : '')">
+            <span class="inline-block font-mono transition-all text-2xl w-12 h-12 py-2 px-2" x-bind:class="(reachedPhase('tapStart') && !reachedPhase('flashing') ? 'bg-green-500 dark:bg-green-600' : 'bg-sky-400 dark:bg-sky-600') + ' ' + (reachedPhase('rotating') ? 'z-20 animate-rotate-x-1' : '')">
             <span class="inline-block" x-bind:class="(reachedPhase('rotating') ? 'animate-rotate-text-counter' : '')" x-text="reachedPhase('rotating') ? 'T' : 'E'"></span>
             </span>
         </p>
@@ -249,7 +249,7 @@
             <p>{{ $currentDate }}</p>
             <p>
                 Target word: <b>{{ $targetWord }}</b>
-                <button type="button" @click="requestHelp" class="bg-gray-400 dark:bg-gray-700 rounded-full w-6">❔</button>
+                <button type="button" @click="requestHelp" class="bg-gray-400 dark:bg-gray-700 text-white rounded-full w-6">?</button>
             </p>
             <p class="mb-3">
                 @if ($turnCount == 0)
