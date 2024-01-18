@@ -30,6 +30,7 @@ $register = function () {
     $validated = $this->validate();
 
     $validated['password'] = Hash::make($validated['password']);
+    $validated['friendshipCode'] = strtoupper(bin2hex(random_bytes(4)));
 
     event(new Registered($user = User::create($validated)));
 

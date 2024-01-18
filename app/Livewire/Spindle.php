@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use App\Models\Game;
+use App\Models\Turn;
+use App\Models\User;
 
 
 class Spindle extends Component
@@ -63,7 +65,9 @@ class Spindle extends Component
 
     public $victory = false;
 
-    public $leaderboard;
+    public $histogram;
+
+    public $leaderboard = [];
 
     private function either($a, $b) {
         return $a ? $a : $b;
@@ -103,7 +107,8 @@ class Spindle extends Component
         $game->save();
     }
 
-    private function updateSavedGame() {
+    private function updateSavedGame($start, $end) {
+        // save the updated game state
         Game::where('userOrSessionId', $this->getIdForThisGame())
         ->where('userTimestamp', $this->userTimestamp)
         ->where('target', $this->targetWord)
@@ -112,10 +117,25 @@ class Spindle extends Component
                 'turnCount' => $this->turnCount,
                 'victory' => $this->victory,
             ]);
+
+        $game = Game::where('userOrSessionId', $this->getIdForThisGame())
+            ->where('userTimestamp', $this->userTimestamp)
+            ->where('target', $this->targetWord)
+            ->first();
+
+        // now save the specific turn
+        $turn = new Turn;
+        $turn->game_id = $game->id;
+        $turn->grid = json_encode($this->grid);
+        $turn->startRow = $start[0];
+        $turn->startCol = $start[1];
+        $turn->endRow = $end[0];
+        $turn->endCol = $end[1];
+        $turn->save();
     }
 
-    private function getLeaderboard() {
-        $rawLeaderboard = DB::select('select turnCount, count(*) as userCount
+    private function getHistogram() {
+        $rawHistogram = DB::select('select turnCount, count(*) as userCount
         from games
         where
           victory is true
@@ -123,32 +143,122 @@ class Spindle extends Component
         group by turnCount
         order by turnCount asc;', ['userTimestamp' => $this->userTimestamp]);
 
-        $maxTurnCount = $rawLeaderboard[count($rawLeaderboard) - 1]->turnCount;
+        $maxTurnCount = $rawHistogram[count($rawHistogram) - 1]->turnCount;
         $maxUserCount = 0;
-        for ($i=0; $i < count($rawLeaderboard); $i++) {
-            if ($rawLeaderboard[$i]->userCount > $maxUserCount) {
-                $maxUserCount = $rawLeaderboard[$i]->userCount;
+        for ($i=0; $i < count($rawHistogram); $i++) {
+            if ($rawHistogram[$i]->userCount > $maxUserCount) {
+                $maxUserCount = $rawHistogram[$i]->userCount;
             }
         }
 
-        $this->leaderboard = [];
+        $this->histogram = [];
         $arrayPos = 0;
         for ($i=1; $i <= $maxTurnCount ; $i++) {
-            if ($rawLeaderboard[$arrayPos]->turnCount === $i) {
-                array_push($this->leaderboard, (object) [
+            if ($rawHistogram[$arrayPos]->turnCount === $i) {
+                array_push($this->histogram, (object) [
                     'turnCount' => $i,
-                    'userCount' => $rawLeaderboard[$arrayPos]->userCount,
-                    'userCountPercent' => $rawLeaderboard[$arrayPos]->userCount / $maxUserCount,
+                    'userCount' => $rawHistogram[$arrayPos]->userCount,
+                    'userCountPercent' => $rawHistogram[$arrayPos]->userCount / $maxUserCount,
                 ]);
                 $arrayPos++;
             } else {
-                array_push($this->leaderboard, (object) [
+                array_push($this->histogram, (object) [
                     'turnCount' => $i,
                     'userCount' => 0,
                     'userCountPercent' => 0,
                 ]);
             }
         }
+    }
+
+    public $myFriendCode = '';
+
+    private function getFriends() {
+        if (!Auth::id()) {
+            return [];
+        }
+        return DB::select('select id, name, friendshipCode from users where id = ? or id in (
+            select from_user_id from friendships where to_user_id = ?
+            union all
+            select to_user_id from friendships where from_user_id = ?
+        );', [Auth::id(), Auth::id(), Auth::id()]);
+    }
+
+    private function getLeaderboard() {
+        $friends = $this->getFriends();
+        foreach ($friends as $f) {
+            $g = Game::where('userOrSessionId', $f->id)
+                ->where('userTimestamp', $this->userTimestamp)
+                ->where('target', $this->targetWord)
+                ->first();
+            if ($g) {
+                $f->playing = true;
+                $f->victory = $g->victory;
+                $f->turnCount = $g->turnCount;
+            } else {
+                $f->playing = false;
+            }
+            $f->isMe = $f->id == Auth::id();
+            if ($f->isMe) {
+                $this->myFriendCode = $this->encodeFriendCode($f);
+            }
+        }
+
+        usort($friends, function($a, $b) {
+            if (!$a->playing) {
+                return 1;
+            }
+            if (!$b->playing) {
+                return -1;
+            }
+            if (!$a->victory) {
+                return 1;
+            }
+            if (!$b->victory) {
+                return -1;
+            }
+            return $a->turnCount - $b->turnCount;
+        });
+        $this->leaderboard = $friends;
+    }
+
+    private function encodeFriendCode($user) {
+        return $user->id . '_' . $user->friendshipCode;
+    }
+    private function decodeFriendCode($code) {
+        if (preg_match('/^\d+_[A-Z0-9]{8}$/', $code) != 1) {
+            return [-1, 'badcode'];
+        }
+        [$id, $code] = explode('_', $code);
+        return [$id, $code];
+    }
+    public $badCode = false;
+    public function addFriend($code) {
+        $myId = Auth::id();
+        if (!$myId) {
+            return;
+        }
+        // find friend based on the unique code
+        [$friendId, $friendCode] = $this->decodeFriendCode($code);
+        $friend = User::where('id', $friendId)->where('friendshipCode', $friendCode)->first();
+
+        if (!$friend) {
+            $this->badCode = true;
+            return;
+        }
+        $this->badCode = false;
+        if ($friend->id == $myId) {
+            return;
+        }
+
+        // add them to the friendship database (always do lowest ID first, to avoid duplicates)
+        DB::table('friendships')->upsert([
+            'from_user_id' => $myId < $friendId ? $myId : $friendId,
+            'to_user_id' => $myId < $friendId ? $friendId : $myId
+        ], ['from_user_id', 'to_user_id'], ['from_user_id', 'to_user_id']);
+
+        // rebuild the leaderboard
+        $this->getLeaderboard();
     }
 
     // we use custom initialise, instead of mount, because we want the client to
@@ -173,6 +283,7 @@ class Spindle extends Component
             $this->turnCount = $game->turnCount;
             $this->victory = $game->victory;
             if ($this->victory) {
+                $this->getHistogram();
                 $this->getLeaderboard();
             }
             return;
@@ -271,8 +382,9 @@ class Spindle extends Component
             $this->rotate($start, $end, strlen($word));
             $this->turnCount++;
             $this->victory = $this->inVictoryState();
-            $this->updateSavedGame();
+            $this->updateSavedGame($start, $end);
             if ($this->victory) {
+                $this->getHistogram();
                 $this->getLeaderboard();
             }
             // TODO: store the histogram of 5-letter, 4-letter, 3-letter, and 2-letter words, at least for local display
@@ -283,7 +395,6 @@ class Spindle extends Component
             return (object) [
                 'valid' => false,
                 'word' => $word,
-                'wordListLength' => count($allWords),
             ];
         }
     }

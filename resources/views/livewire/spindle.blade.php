@@ -291,9 +291,9 @@
                     <p class="mb-2">
                         Don't forget to play again tomorrow &mdash; there’s a new target word every day!
                     </p>
-                    <div class="h-[210px] m-auto  bg-slate-50 dark:bg-slate-900 p-2 rounded-md">
+                    <div class="h-[210px] m-auto  bg-slate-50 dark:bg-slate-900 p-2 rounded-md mb-2">
                         <div class="h-[150px] flex min-w-0 overflow-hidden justify-between items-end gap-0">
-                            @foreach ($leaderboard as $bar)<div class="flex-grow flex-shrink"
+                            @foreach ($histogram as $bar)<div class="flex-grow flex-shrink"
                                 style="height: {{$bar->userCountPercent * 100}}%; min-height: 1px; min-width: 1px; overflow: hidden;"
                                 x-bind:class="{{$bar->turnCount}} === {{$turnCount}} ? 'bg-sky-300 animate-pulse' : 'bg-sky-800'"
                                 title="{{$bar->turnCount}}"
@@ -301,13 +301,49 @@
                         </div>
                         <div class="flex justify-between items-end">
                             <div>1</div>
-                            <div>{{$leaderboard[count($leaderboard) - 1]->turnCount}}</div>
+                            <div>{{$histogram[count($histogram) - 1]->turnCount}}</div>
                         </div>
                         <div class="flex justify-between items-end">
                             <div class="text-sm">turn</div>
                             <div class="text-sm">turns</div>
                         </div>
                     </div>
+                    <h1 class="text-xl font-bold">You and your friends</h1>
+                    @auth
+                        <ol class="list-decimal list-inside mb-2">
+                            @foreach ($leaderboard as $player)
+                                <li class="{{$player->isMe ? 'font-bold' : ''}}">
+                                    {{$player->name}}
+                                    @if ($player->playing)
+                                        @if ($player->victory)
+                                            ({{$player->turnCount}} turn{{$player->turnCount == 1 ? '' : 's'}})
+                                        @else ($player->playing)
+                                            (in progress)
+                                        @endif
+                                    @else
+                                        (hasn’t started today)
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ol>
+                        <p class="mb-2">
+                            To add friends to your personalised leaderboard, enter their code in the box below,
+                            or give them your code: <code class="font-mono text-slate-600 dark:text-slate-300">{{$myFriendCode}}</code>
+                        </p>
+                        <p x-data="{ code: '', submit() {  $wire.addFriend(this.code) } }" class="mb-2">
+                            <input type="text" x-model="code" @change="submit" />
+                            <button @click="submit" x-bind:disabled="!code"
+                                class="bg-sky-500 disabled:bg-slate-300 text-white inline-block leading-10 px-2"
+                            >Add friend</button>
+                            <span x-show="$wire.badCode" x-transition class="text-red-500 font-bold">
+                                Code not recognised.
+                            </span>
+                        </p>
+                    @else
+                        <p class="mb-2">
+                            <a class="text-sky-600" href="/register">Create an account</a> in order to add your friends to your own personal leaderboard.
+                        </p>
+                    @endauth
                 </div>
             @endif
         </div>
