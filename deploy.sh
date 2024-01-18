@@ -1,2 +1,3 @@
+yarn build
 read -p "Username? " username
-rsync -azP --delete --exclude={'node_modules','.*','storage'} . $username@playspindle.com:playspindle.com
+rsync -azP --delete --exclude={'node_modules','.*','storage','public/hot'} . $username@playspindle.com:playspindle.com
