@@ -187,7 +187,9 @@ class Spindle extends Component
     private function getLeaderboard() {
         $friends = $this->getFriends();
         foreach ($friends as $f) {
-            $g = Game::where('userOrSessionId', $f->id)
+            // convert our ID to a string, because if we supply a number MySQL provides results
+            // that are not what we want. Eg, 1 matches '1pr012i03912i3' as well as '1'.
+            $g = Game::where('userOrSessionId', strval($f->id))
                 ->where('userTimestamp', $this->userTimestamp)
                 ->where('target', $this->targetWord)
                 ->first();
