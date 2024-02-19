@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use Livewire\Component;
+use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
@@ -60,10 +61,15 @@ class Spindle extends Component
     public $currentDate = '';
 
     public $turnCount = 0;
-
+    
+    #[Url(as: 'date')]
     public $userTimestamp = 0;
 
+    public $nowTimestamp = 0;
+
     public $victory = false;
+
+    public $inactive = false;
 
     public $histogram;
 
@@ -108,6 +114,9 @@ class Spindle extends Component
     }
 
     private function updateSavedGame($start, $end) {
+        if ($this->inactive) {
+            return;
+        }
         // save the updated game state
         Game::where('userOrSessionId', $this->getIdForThisGame())
         ->where('userTimestamp', $this->userTimestamp)
@@ -143,30 +152,36 @@ class Spindle extends Component
         group by turnCount
         order by turnCount asc;', ['userTimestamp' => $this->userTimestamp]);
 
-        $maxTurnCount = $rawHistogram[count($rawHistogram) - 1]->turnCount;
+        $maxTurnCount = 0;
         $maxUserCount = 0;
-        for ($i=0; $i < count($rawHistogram); $i++) {
-            if ($rawHistogram[$i]->userCount > $maxUserCount) {
-                $maxUserCount = $rawHistogram[$i]->userCount;
+
+        if (count($rawHistogram) > 0) {
+            $maxTurnCount = $rawHistogram[count($rawHistogram) - 1]->turnCount;
+            for ($i=0; $i < count($rawHistogram); $i++) {
+                if ($rawHistogram[$i]->userCount > $maxUserCount) {
+                    $maxUserCount = $rawHistogram[$i]->userCount;
+                }
             }
         }
 
         $this->histogram = [];
-        $arrayPos = 0;
-        for ($i=1; $i <= $maxTurnCount ; $i++) {
-            if ($rawHistogram[$arrayPos]->turnCount === $i) {
-                array_push($this->histogram, (object) [
-                    'turnCount' => $i,
-                    'userCount' => $rawHistogram[$arrayPos]->userCount,
-                    'userCountPercent' => $rawHistogram[$arrayPos]->userCount / $maxUserCount,
-                ]);
-                $arrayPos++;
-            } else {
-                array_push($this->histogram, (object) [
-                    'turnCount' => $i,
-                    'userCount' => 0,
-                    'userCountPercent' => 0,
-                ]);
+        if ($maxUserCount > 0) {
+            $arrayPos = 0;
+            for ($i=1; $i <= $maxTurnCount ; $i++) {
+                if ($rawHistogram[$arrayPos]->turnCount === $i) {
+                    array_push($this->histogram, (object) [
+                        'turnCount' => $i,
+                        'userCount' => $rawHistogram[$arrayPos]->userCount,
+                        'userCountPercent' => $rawHistogram[$arrayPos]->userCount / $maxUserCount,
+                    ]);
+                    $arrayPos++;
+                } else {
+                    array_push($this->histogram, (object) [
+                        'turnCount' => $i,
+                        'userCount' => 0,
+                        'userCountPercent' => 0,
+                    ]);
+                }
             }
         }
     }
@@ -274,24 +289,30 @@ class Spindle extends Component
             $timezoneOffsetMinutes = 0;
         }
         $now = time() - ($timezoneOffsetMinutes * 60);
-        $this->currentDate = date('j F Y', $now);
-        $userTimestamp = floor($now / 86400);
-        $this->userTimestamp = $userTimestamp;
+        $this->nowTimestamp = floor($now / 86400);
+        if ($this->userTimestamp == 0 || $this->userTimestamp > $this->nowTimestamp) {
+            $this->userTimestamp = $this->nowTimestamp;
+        }
+        if ($this->userTimestamp != $this->nowTimestamp) {
+            $this->inactive = true;
+        }
 
-        $game = $this->getSavedGame($userTimestamp);
+        $this->currentDate = date('j F Y', $this->userTimestamp * 86400 + ($timezoneOffsetMinutes * 60));
+
+        $game = $this->getSavedGame($this->userTimestamp);
         if ($game) {
             $this->grid = json_decode($game->grid);
             $this->targetWord = $game->target;
             $this->turnCount = $game->turnCount;
             $this->victory = $game->victory;
-            if ($this->victory) {
+            if ($this->victory || $this->inactive) {
                 $this->getHistogram();
                 $this->getLeaderboard();
             }
             return;
         }
 
-        srand($userTimestamp);
+        srand($this->userTimestamp);
         $this->generateGrid();
         $this->targetWord = "";
         $attempts = 0;
@@ -377,6 +398,10 @@ class Spindle extends Component
 
     public function submit($start, $end) {
         include 'WordList.php';
+
+        if ($this->inactive || $this->victory) {
+            return;
+        }
 
         $word = $this->getWord($start, $end);
 

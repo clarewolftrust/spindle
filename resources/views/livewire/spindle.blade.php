@@ -86,7 +86,7 @@
     },
 
     async clickOnLetter(row, col) {
-        if (this.spinning || this.loading || $wire.victory) {
+        if (this.spinning || this.loading || $wire.victory || $wire.inactive) {
             return;
         }
 
@@ -246,7 +246,15 @@
                 User timestamp: {{ $userTimestamp }}
             </p>
             */ ?>
-            <p>{{ $currentDate }}</p>
+            <p>
+                <a href="?date={{ $userTimestamp - 1 }}" >&laquo;</a>
+                {{ $currentDate }}
+                @if ($userTimestamp < $nowTimestamp)
+                    <a href="?date={{ $userTimestamp + 1 }}" >&raquo;</a>
+                    <br/>
+                    <a href="/" class="underline text-sky-700 dark:text-sky-500 decoration-dotted" >View today's puzzle</a>
+                @endif
+            </p>
             <p>
                 Target word: <b>{{ $targetWord }}</b>
                 <button type="button" @click="requestHelp" class="bg-gray-400 dark:bg-gray-700 text-white rounded-full w-6">?</button>
@@ -272,7 +280,7 @@
                         x-bind:class="
                             `${validWordAnimation({{$rowIndex}}, {{$colIndex}})} ` +
                             letterBackground({{$rowIndex}}, {{$colIndex}}) +
-                            ($wire.victory ? ' cursor-default ' : '')
+                            ($wire.victory || $wire.inactive ? ' cursor-default ' : '')
                         "
                         ><span class="inline-block" x-bind:class="validWordAnimationText({{$rowIndex}}, {{$colIndex}})">
                         {{ $letter }}</span></button>@endforeach
@@ -280,34 +288,52 @@
             @endforeach
             <p class="bg-red-500 text-white px-4 py-2 inline-block m-auto rounded-md" x-show="showInvalidWordText" x-transition x-transition:enter.duration.200ms
             x-transition:leave.duration.800ms x-cloak x-text="`${invalidWordText} is not an English word`" />
-            @if ($victory)
+            @if ($victory || $inactive)
                 <div wire:transition>
-                    <h1 class="font-bold text-4xl m-4">🎉 Victory!</h1>
-                    <p class="mb-2">
-                        How did you compare to the rest of the world? The graph shows the
-                        number of people on the Y axis, and the number of turns they took
-                        on the X axis. Your result is highlighted.
-                    </p>
-                    <p class="mb-2">
-                        Don't forget to play again tomorrow &mdash; there’s a new target word every day!
-                    </p>
-                    <div class="h-[210px] m-auto  bg-slate-50 dark:bg-slate-900 p-2 rounded-md mb-2">
-                        <div class="h-[150px] flex min-w-0 overflow-hidden justify-between items-end gap-0">
-                            @foreach ($histogram as $bar)<div class="flex-grow flex-shrink"
-                                style="height: {{$bar->userCountPercent * 100}}%; min-height: 1px; min-width: 1px; overflow: hidden;"
-                                x-bind:class="{{$bar->turnCount}} === {{$turnCount}} ? 'bg-sky-300 animate-pulse' : 'bg-sky-800'"
-                                title="{{$bar->turnCount}}"
-                                ></div>@endforeach
+                    @if ($victory)
+                        <h1 class="font-bold text-4xl m-4">🎉 Victory!</h1>
+                    @elseif ($turnCount)
+                        <p class="mb-2">
+                            Looks like you didn’t manage to solve this one.
+                        </p>
+                    @else
+                        <p class="mb-2">Looks like you didn’t attempt this one.</p>
+                    @endif
+                    @if ($histogram && count($histogram) > 0)
+                        <p class="mb-2">
+                            @if ($victory)
+                                How did you compare to the rest of the world?
+                            @endif
+                            The graph shows the
+                            number of people on the Y axis, and the number of turns they took
+                            on the X axis.
+                            @if ($victory)
+                                Your result is highlighted.
+                            @endif
+                        </p>
+                        @if ($userTimestamp == $nowTimestamp)
+                            <p class="mb-2">
+                                Don't forget to play again tomorrow &mdash; there’s a new target word every day!
+                            </p>
+                        @endif
+                        <div class="h-[210px] m-auto  bg-slate-50 dark:bg-slate-900 p-2 rounded-md mb-2">
+                            <div class="h-[150px] flex min-w-0 overflow-hidden justify-between items-end gap-0">
+                                @foreach ($histogram as $bar)<div class="flex-grow flex-shrink"
+                                    style="height: {{$bar->userCountPercent * 100}}%; min-height: 1px; min-width: 1px; overflow: hidden;"
+                                    x-bind:class="{{$bar->turnCount}} === {{$turnCount}} ? 'bg-sky-300 animate-pulse' : 'bg-sky-800'"
+                                    title="{{$bar->turnCount}}"
+                                    ></div>@endforeach
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <div>1</div>
+                                <div>{{$histogram[count($histogram) - 1]->turnCount}}</div>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <div class="text-sm">turn</div>
+                                <div class="text-sm">turns</div>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-end">
-                            <div>1</div>
-                            <div>{{$histogram[count($histogram) - 1]->turnCount}}</div>
-                        </div>
-                        <div class="flex justify-between items-end">
-                            <div class="text-sm">turn</div>
-                            <div class="text-sm">turns</div>
-                        </div>
-                    </div>
+                    @endif
                     <h1 class="text-xl font-bold">You and your friends</h1>
                     @auth
                         <ol class="list-decimal list-inside mb-2">
