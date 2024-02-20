@@ -62,8 +62,10 @@ class Spindle extends Component
 
     public $turnCount = 0;
     
-    #[Url(as: 'date')]
     public $userTimestamp = 0;
+
+    #[Url(as: 'date')]
+    public $userTimestampOverride = 0;
 
     public $nowTimestamp = 0;
 
@@ -290,6 +292,9 @@ class Spindle extends Component
         }
         $now = time() - ($timezoneOffsetMinutes * 60);
         $this->nowTimestamp = floor($now / 86400);
+        if ($this->userTimestampOverride > 0) {
+            $this->userTimestamp = $this->userTimestampOverride;
+        }
         if ($this->userTimestamp == 0 || $this->userTimestamp > $this->nowTimestamp) {
             $this->userTimestamp = $this->nowTimestamp;
         }
