@@ -36,11 +36,10 @@ class Viewgame extends Component
     public function mount() {
       // retrieve all turns for this game, as long as the logged in user
       // is the same as the specified user, or friends with that user
-      $ourId = Auth::id();
       $friends = $this->getFriends();
       $friendIds = array_column($friends, 'id');
 
-      if ($ourId == $this->userId || array_search($this->userId, $friendIds, true)) {
+      if (array_search($this->userId, $friendIds, true) !== false) {
         // we are allowed
         $game = Game::where('userOrSessionId', $this->userId)->where('userTimestamp', $this->userTimestamp)->first();
         if (!$game) {
