@@ -23,4 +23,8 @@ Route::view('profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');
 
+Route::view('view', 'view')
+    ->middleware(['auth'])
+    ->name('viewgame');
+
 require __DIR__.'/auth.php';

@@ -342,7 +342,7 @@
                                     {{$player->name}}
                                     @if ($player->playing)
                                         @if ($player->victory)
-                                            ({{$player->turnCount}} turn{{$player->turnCount == 1 ? '' : 's'}})
+                                        (<a href="/view?date={{$userTimestamp}}&user={{$player->id}}" class="underline text-sky-700 dark:text-sky-500 decoration-dotted">{{$player->turnCount}} turn{{$player->turnCount == 1 ? '' : 's'}}</a>)
                                         @else ($player->playing)
                                             (in progress)
                                         @endif
