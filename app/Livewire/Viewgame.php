@@ -56,6 +56,16 @@ class Viewgame extends Component
     }
 
     public function mount() {
+      // you can only view today's game if you yourself have completed it
+      $todayTimestamp = floor(time() / 86400);
+      if ($this->userTimestamp >= $todayTimestamp - 1) {
+        $ourGame = Game::where('userOrSessionId', Auth::id())->where('userTimestamp', $this->userTimestamp)->first();
+        if (!$ourGame || !$ourGame->victory) {
+          $this->unauthorised = true;
+          return;
+        }
+      }
+
       // retrieve all turns for this game, as long as the logged in user
       // is the same as the specified user, or friends with that user
       $friends = $this->getFriends();
@@ -64,8 +74,8 @@ class Viewgame extends Component
       if (array_search($this->userId, $friendIds, true) !== false) {
         // we are allowed
         $game = Game::where('userOrSessionId', $this->userId)->where('userTimestamp', $this->userTimestamp)->first();
-        if (!$game) {
-          // game doesn't exist - user mustn't have played that day
+        if (!$game || !$game->victory) {
+          // game doesn't exist - user mustn't have won that day
           $this->unauthorised = true;
         } else {
           $user = User::find($this->userId);
