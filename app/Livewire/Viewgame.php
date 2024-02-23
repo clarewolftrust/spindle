@@ -33,6 +33,28 @@ class Viewgame extends Component
     public $target = '';
     public $username = '';
 
+    private function swap(&$x, &$y) {
+      $tmp=$x;
+      $x=$y;
+      $y=$tmp;
+    }
+
+    private function rotate($grid, $start, $end) {
+      $length = abs($start[0] - $end[0]) + abs($start[1] - $end[1]);
+      for ($i = 0; $i < ($length/2); $i++) {
+        if ($start[0] < $end[0]) {
+          $this->swap($grid[$end[0] - $i][$start[1]], $grid[$start[0] + $i][$start[1]]);
+        } else if ($start[0] > $end[0]) {
+          $this->swap($grid[$end[0] + $i][$start[1]], $grid[$start[0] - $i][$start[1]]);
+        } else if ($start[1] < $end[1]) {
+          $this->swap($grid[$start[0]][$end[1] - $i], $grid[$start[0]][$start[1] + $i]);
+        } else if ($start[1] > $end[1]) {
+          $this->swap($grid[$start[0]][$end[1] + $i], $grid[$start[0]][$start[1] - $i]);
+        }
+      }
+      return $grid;
+    }
+
     public function mount() {
       // retrieve all turns for this game, as long as the logged in user
       // is the same as the specified user, or friends with that user
@@ -52,6 +74,7 @@ class Viewgame extends Component
           $this->allTurns = Turn::where('game_id', $game->id)->get();
           for ($i=0; $i < count($this->allTurns); $i++) {
             $this->allTurns[$i]->grid = json_decode(($this->allTurns[$i]->grid));
+            $this->allTurns[$i]->grid = $this->rotate($this->allTurns[$i]->grid, [$this->allTurns[$i]->startRow, $this->allTurns[$i]->startCol], [$this->allTurns[$i]->endRow, $this->allTurns[$i]->endCol]);
           }
         }
       } else {
